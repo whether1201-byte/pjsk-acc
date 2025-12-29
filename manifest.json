@@ -1,0 +1,15 @@
+{
+  "name": "프로세카 정확도 기록기",
+  "short_name": "PJSK Acc",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
