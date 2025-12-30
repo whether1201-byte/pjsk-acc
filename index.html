@@ -3,73 +3,136 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>리듬게임 정확도 기록기</title>
+<title>프로세카 정확도 기록기</title>
 
 <style>
 body {
-  background:#111;
+  background: linear-gradient(180deg, #0d0d0d, #1a1a1a);
   color:#eee;
-  font-family: Arial, sans-serif;
-  padding:20px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  padding:16px;
 }
+
+h2 { margin-bottom: 6px; }
+h3 { margin-top: 14px; }
 
 input, select, button {
   padding:8px;
   margin:4px 0;
-  background:#222;
+  background:#1f1f1f;
   color:#fff;
-  border:1px solid #555;
+  border:1px solid #444;
+  border-radius:6px;
 }
 
-button { cursor:pointer; }
+button {
+  cursor:pointer;
+  transition:0.2s;
+}
+button:hover {
+  background:#333;
+}
 
-.song { margin-top:14px; font-weight:bold; }
-.record { margin-left:18px; font-size:14px; }
+hr {
+  border:none;
+  border-top:1px solid #333;
+  margin:14px 0;
+}
 
-.EASY { color:#4caf50; }
-.NORMAL { color:#8bc34a; }
-.HARD { color:#ff9800; }
-.EXPERT { color:#f44336; }
-.MASTER { color:#9c27b0; }
-.APPEND { color:#03a9f4; }
+/* ===== 카드 ===== */
+.song-card {
+  background:#181818;
+  border-radius:10px;
+  padding:10px 12px;
+  margin-top:14px;
+  box-shadow:0 0 6px rgba(0,0,0,0.4);
+}
 
-.AP { color:#ffd700; }   /* gold */
-.FC { color:#8bc34a; }   /* light green */
+.song-title {
+  font-weight:bold;
+  font-size:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
 
+/* ===== 기록 ===== */
+.record {
+  margin-top:6px;
+  padding-left:10px;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* ===== 난이도 배지 ===== */
+.badge {
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:bold;
+}
+
+.EASY { background:#2e7d32; }
+.NORMAL { background:#558b2f; }
+.HARD { background:#ef6c00; }
+.EXPERT { background:#c62828; }
+.MASTER { background:#6a1b9a; }
+.APPEND { background:#0277bd; }
+
+/* ===== 정확도 ===== */
+.acc { font-weight:bold; }
+.AP { color:#ffd700; }
+.FC { color:#9cff57; }
+
+/* ===== 버튼 ===== */
 .delete {
-  margin-left:6px;
-  color:#ff5252;
+  margin-left:auto;
   background:none;
   border:none;
+  color:#ff5252;
+  font-size:14px;
+}
+
+/* ===== 상단 컨트롤 ===== */
+.controls {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🎵 리듬게임 정확도 기록기</h2>
+<h2>🎵 프로세카 정확도 기록기</h2>
 
 <h3>👤 유저</h3>
-<select id="userSelect" onchange="switchUser()"></select>
-<input id="newUser" placeholder="새 유저">
-<button onclick="addUser()">추가</button>
+<div class="controls">
+  <select id="userSelect" onchange="switchUser()"></select>
+  <input id="newUser" placeholder="새 유저">
+  <button onclick="addUser()">추가</button>
+</div>
 
 <hr>
 
-<input id="song" placeholder="노래 이름" list="songs">
-<datalist id="songs"></datalist><br>
+<input id="song" placeholder="노래 이름" list="songList">
+<datalist id="songList"></datalist>
 
-<select id="diff">
-  <option>EASY</option>
-  <option>NORMAL</option>
-  <option>HARD</option>
-  <option>EXPERT</option>
-  <option>MASTER</option>
-  <option>APPEND</option>
-</select>
+<div class="controls">
+  <select id="diff">
+    <option>EASY</option>
+    <option>NORMAL</option>
+    <option>HARD</option>
+    <option>EXPERT</option>
+    <option>MASTER</option>
+    <option>APPEND</option>
+  </select>
 
-난이도
-<input id="level" type="number" min="1" max="40" style="width:70px">
+  <input id="level" type="number" min="1" max="40" placeholder="난이도">
+</div>
 
 <hr>
 
@@ -83,172 +146,180 @@ MISS <input id="m" type="number" min="0"><br>
 
 <hr>
 
-<select id="sortMode" onchange="render()">
-  <option value="acc">정확도 높은 순</option>
-  <option value="time">최신 기록 순</option>
-  <option value="diff">난이도 순</option>
-</select>
+<div class="controls">
+  <select id="sortMode" onchange="render()">
+    <option value="acc">정확도 높은 순</option>
+    <option value="time">최신 기록 순</option>
+    <option value="level">난이도 높은 순</option>
+  </select>
 
-<button onclick="clearAll()">현재 유저 기록 초기화</button>
+  <select id="filterMode" onchange="render()">
+    <option value="all">전체</option>
+    <option value="FC">FC만</option>
+    <option value="AP">AP만</option>
+  </select>
+
+  <button onclick="clearAll()">기록 초기화</button>
+</div>
 
 <div id="result"></div>
 <div id="records"></div>
 
 <script>
+/* ===== DB ===== */
+let db = JSON.parse(localStorage.getItem("pskDB") || "{}");
 let currentUser = localStorage.getItem("currentUser") || "default";
 
-/* ---------- 유저 ---------- */
-function loadUsers() {
-  return JSON.parse(localStorage.getItem("users") || '["default"]');
-}
-function saveUsers(u) {
-  localStorage.setItem("users", JSON.stringify(u));
-}
-function initUsers() {
+function saveDB(){ localStorage.setItem("pskDB", JSON.stringify(db)); }
+function userData(){ if(!db[currentUser]) db[currentUser]={}; return db[currentUser]; }
+
+/* ===== 유저 ===== */
+function initUsers(){
   userSelect.innerHTML="";
-  loadUsers().forEach(u=>{
-    const o=document.createElement("option");
+  Object.keys(db).forEach(u=>{
+    let o=document.createElement("option");
     o.value=u; o.text=u;
     if(u===currentUser) o.selected=true;
     userSelect.appendChild(o);
   });
 }
-function addUser() {
+function addUser(){
   const n=newUser.value.trim();
   if(!n) return;
-  const u=loadUsers();
-  if(!u.includes(n)) u.push(n);
-  saveUsers(u);
+  if(!db[n]) db[n]={};
   currentUser=n;
   localStorage.setItem("currentUser",n);
-  initUsers(); render();
+  saveDB(); initUsers(); render();
   newUser.value="";
 }
-function switchUser() {
+function switchUser(){
   currentUser=userSelect.value;
   localStorage.setItem("currentUser",currentUser);
   render();
 }
 
-/* ---------- 정확도 ---------- */
-function calcAccuracy(p,g,d,b,m) {
+/* ===== 정확도 ===== */
+function calcAccuracy(p,g,d,b,m){
   const N=p+g+d+b+m;
   if(!N) return 0;
   const penalty = g + 2.5*d + 4*b + 8*m;
   return Math.max(0,(1-penalty/N))*100;
 }
 
-/* ---------- 저장 ---------- */
-function key() { return "records_"+currentUser; }
-function load() { return JSON.parse(localStorage.getItem(key()) || "{}"); }
-function saveData(d) { localStorage.setItem(key(), JSON.stringify(d)); }
-
-function calculate() {
+/* ===== 저장 ===== */
+function calculate(){
   const song=songInput.value.trim();
   if(!song) return alert("노래 이름 입력");
 
   const diff=diffSelect.value;
   const level=+levelInput.value||0;
-  const p=+pInput.value, g=+gInput.value,
-        d=+dInput.value, b=+bInput.value, m=+mInput.value;
+  const p=+pInput.value, g=+gInput.value, d=+dInput.value, b=+bInput.value, m=+mInput.value;
 
   const acc=calcAccuracy(p,g,d,b,m);
 
   let judge="NONE";
-  if(m===0 && b===0 && d===0 && g===0) judge="AP";
-  else if(m===0 && b===0 && d===0 && g>0) judge="FC";
+  if(g===0 && d===0 && b===0 && m===0) judge="AP";
+  else if(d===0 && b===0 && m===0) judge="FC";
 
-  result.innerHTML =
-    `<b class="${judge}">정확도: ${acc.toFixed(6)}% ${judge!=="NONE"?`(${judge})`:""}</b>`;
+  result.innerHTML=`<div class="acc ${judge}">정확도: ${acc.toFixed(6)}% ${judge!=="NONE"?`(${judge})`:""}</div>`;
 
-  const data=load();
+  const data=userData();
   if(!data[song]) data[song]={};
 
   if(!data[song][diff] || acc>data[song][diff].acc){
     data[song][diff]={acc,judge,level,time:Date.now()};
   }
 
-  saveData(data);
+  saveDB();
   render();
 }
 
-/* ---------- 삭제 ---------- */
-function deleteSong(song) {
-  if(!confirm(`"${song}"의 모든 기록을 삭제할까요?`)) return;
-  const d=load(); delete d[song];
-  saveData(d); render();
+/* ===== 삭제 ===== */
+function deleteSong(song){
+  if(!confirm(`"${song}" 전체 삭제?`)) return;
+  delete userData()[song];
+  saveDB(); render();
 }
-function deleteDiff(song,diff) {
-  if(!confirm(`${song} [${diff}] 기록을 삭제할까요?`)) return;
-  const d=load(); delete d[song][diff];
-  if(Object.keys(d[song]).length===0) delete d[song];
-  saveData(d); render();
+function deleteDiff(song,diff){
+  if(!confirm(`${song} [${diff}] 삭제?`)) return;
+  delete userData()[song][diff];
+  if(Object.keys(userData()[song]).length===0) delete userData()[song];
+  saveDB(); render();
 }
-function clearAll() {
-  if(!confirm(`${currentUser}의 모든 기록을 삭제할까요?`)) return;
-  localStorage.removeItem(key());
-  render();
+function clearAll(){
+  if(!confirm(`${currentUser} 기록 전부 삭제?`)) return;
+  db[currentUser]={};
+  saveDB(); render();
 }
 
-/* ---------- 출력 ---------- */
+/* ===== 출력 ===== */
 const diffOrder={APPEND:0,MASTER:1,EXPERT:2,HARD:3,NORMAL:4,EASY:5};
 
-function render() {
+function render(){
   records.innerHTML="";
-  songs.innerHTML="";
-  const data=load();
+  songList.innerHTML="";
+  const data=userData();
+  const sort = sortMode.value; 
   let list=[];
 
   for(let s in data){
-    let diffs=[], best=0, time=0;
-    let mainRank=999, mainAcc=0;
-
+    let diffs=[];
     for(let d in data[s]){
-      const r=data[s][d];
-      diffs.push({diff:d,...r});
-      best=Math.max(best,r.acc);
-      time=Math.max(time,r.time);
-
-      const rank=diffOrder[d];
-      if(rank<mainRank || (rank===mainRank && r.acc>mainAcc)){
-        mainRank=rank; mainAcc=r.acc;
-      }
+      diffs.push({song:s,diff:d,...data[s][d]});
     }
-
-    diffs.sort((a,b)=>diffOrder[a.diff]-diffOrder[b.diff]);
-    list.push({song:s,best,time,diffs,mainRank,mainAcc});
-
-    const o=document.createElement("option");
-    o.value=s; songs.appendChild(o);
+    diffs.sort((a,b)=>{
+      if(diffOrder[a.diff]!==diffOrder[b.diff])
+        return diffOrder[a.diff]-diffOrder[b.diff];
+      return b.acc-a.acc;
+    });
+    list.push({song:s,diffs});
+      if (sort === "acc") {
+    list.sort((a,b) =>
+      Math.max(...b.diffs.map(d=>d.acc)) -
+      Math.max(...a.diffs.map(d=>d.acc))
+    );
+  }
+  else if (sort === "time") {
+    list.sort((a,b) =>
+      Math.max(...b.diffs.map(d=>d.time)) -
+      Math.max(...a.diffs.map(d=>d.time))
+    );
+  }
+  else if (sort === "level") {
+    list.sort((a,b) =>
+      Math.max(...b.diffs.map(d=>d.level)) -
+      Math.max(...a.diffs.map(d=>d.level))
+    );
+  }
+    let o=document.createElement("option");
+    o.value=s; songList.appendChild(o);
   }
 
-  const mode=sortMode.value;
-  list.sort((a,b)=>{
-    if(mode==="acc") return b.best-a.best;
-    if(mode==="time") return b.time-a.time;
-    if(a.mainRank!==b.mainRank) return a.mainRank-b.mainRank;
-    return b.mainAcc-a.mainAcc;
-  });
+  const filter=filterMode.value;
 
   list.forEach(s=>{
     records.innerHTML+=`
-      <div class="song">
-        ${s.song}
-        <button class="delete" onclick="deleteSong('${s.song}')">🗑</button>
-      </div>`;
+      <div class="song-card">
+        <div class="song-title">
+          ${s.song}
+          <button class="delete" onclick="deleteSong('${s.song}')">🗑</button>
+        </div>`;
     s.diffs.forEach(d=>{
+      if (filter === "AP" && d.judge !== "AP") return;
+      if (filter === "FC" && !(d.judge === "FC" || d.judge === "AP")) return;
       records.innerHTML+=`
         <div class="record">
-          └ <span class="${d.diff}">[${d.diff} ${d.level}]</span>
-          <span class="${d.judge}"> ${d.acc.toFixed(6)}%</span>
-          ${d.judge!=="NONE"?`<span class="${d.judge}"> (${d.judge})</span>`:""}
+          <span class="badge ${d.diff}">${d.diff} ${d.level}</span>
+          <span class="acc ${d.judge}">${d.acc.toFixed(6)}%</span>
+          ${d.judge!=="NONE"?`(${d.judge})`:""}
           <button class="delete" onclick="deleteDiff('${s.song}','${d.diff}')">✖</button>
         </div>`;
     });
+    records.innerHTML+=`</div>`;
   });
 }
 
-/* ---------- DOM ---------- */
+/* ===== DOM ===== */
 const userSelect=document.getElementById("userSelect");
 const newUser=document.getElementById("newUser");
 const songInput=document.getElementById("song");
@@ -260,8 +331,9 @@ const dInput=document.getElementById("d");
 const bInput=document.getElementById("b");
 const mInput=document.getElementById("m");
 const records=document.getElementById("records");
-const songs=document.getElementById("songs");
+const songList=document.getElementById("songList");
 const sortMode=document.getElementById("sortMode");
+const filterMode=document.getElementById("filterMode");
 const result=document.getElementById("result");
 
 initUsers();
