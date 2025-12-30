@@ -33,9 +33,15 @@ button { cursor:pointer; }
 .MASTER { color:#9c27b0; }
 .APPEND { color:#03a9f4; }
 
-.AP { color:#ffd700; }
-.FC { color:#00e5ff; }
-.delete { margin-left:6px; color:#ff5252; }
+.AP { color:#ffd700; }   /* gold */
+.FC { color:#8bc34a; }   /* light green */
+
+.delete {
+  margin-left:6px;
+  color:#ff5252;
+  background:none;
+  border:none;
+}
 </style>
 </head>
 
@@ -43,7 +49,6 @@ button { cursor:pointer; }
 
 <h2>🎵 리듬게임 정확도 기록기</h2>
 
-<!-- 유저 -->
 <h3>👤 유저</h3>
 <select id="userSelect" onchange="switchUser()"></select>
 <input id="newUser" placeholder="새 유저">
@@ -81,7 +86,7 @@ MISS <input id="m" type="number" min="0"><br>
 <select id="sortMode" onchange="render()">
   <option value="acc">정확도 높은 순</option>
   <option value="time">최신 기록 순</option>
-  <option value="level">난이도 높은 순</option>
+  <option value="diff">난이도 순</option>
 </select>
 
 <button onclick="clearAll()">현재 유저 기록 초기화</button>
@@ -90,9 +95,9 @@ MISS <input id="m" type="number" min="0"><br>
 <div id="records"></div>
 
 <script>
-/* ================= 유저 관리 ================= */
 let currentUser = localStorage.getItem("currentUser") || "default";
 
+/* ---------- 유저 ---------- */
 function loadUsers() {
   return JSON.parse(localStorage.getItem("users") || '["default"]');
 }
@@ -102,9 +107,9 @@ function saveUsers(u) {
 function initUsers() {
   userSelect.innerHTML="";
   loadUsers().forEach(u=>{
-    let o=document.createElement("option");
+    const o=document.createElement("option");
     o.value=u; o.text=u;
-    if (u===currentUser) o.selected=true;
+    if(u===currentUser) o.selected=true;
     userSelect.appendChild(o);
   });
 }
@@ -125,7 +130,7 @@ function switchUser() {
   render();
 }
 
-/* ================= 정확도 ================= */
+/* ---------- 정확도 ---------- */
 function calcAccuracy(p,g,d,b,m) {
   const N=p+g+d+b+m;
   if(!N) return 0;
@@ -133,16 +138,10 @@ function calcAccuracy(p,g,d,b,m) {
   return Math.max(0,(1-penalty/N))*100;
 }
 
-/* ================= 저장 ================= */
-function key() {
-  return "records_"+currentUser;
-}
-function load() {
-  return JSON.parse(localStorage.getItem(key()) || "{}");
-}
-function saveData(d) {
-  localStorage.setItem(key(), JSON.stringify(d));
-}
+/* ---------- 저장 ---------- */
+function key() { return "records_"+currentUser; }
+function load() { return JSON.parse(localStorage.getItem(key()) || "{}"); }
+function saveData(d) { localStorage.setItem(key(), JSON.stringify(d)); }
 
 function calculate() {
   const song=songInput.value.trim();
@@ -150,19 +149,22 @@ function calculate() {
 
   const diff=diffSelect.value;
   const level=+levelInput.value||0;
-  const p=+pInput.value, g=+gInput.value, d=+dInput.value, b=+bInput.value, m=+mInput.value;
+  const p=+pInput.value, g=+gInput.value,
+        d=+dInput.value, b=+bInput.value, m=+mInput.value;
 
   const acc=calcAccuracy(p,g,d,b,m);
-  let judge="NONE";
-  if(m===0&&b===0&&d===0&&g===0) judge="AP";
-  else if(m===0) judge="FC";
 
-  result.innerHTML=`<b class="${judge}">정확도: ${acc.toFixed(6)}% ${judge!=="NONE"?`(${judge})`:""}</b>`;
+  let judge="NONE";
+  if(m===0 && b===0 && d===0 && g===0) judge="AP";
+  else if(m===0 && b===0 && d===0 && g>0) judge="FC";
+
+  result.innerHTML =
+    `<b class="${judge}">정확도: ${acc.toFixed(6)}% ${judge!=="NONE"?`(${judge})`:""}</b>`;
 
   const data=load();
   if(!data[song]) data[song]={};
 
-  if(!data[song][diff]||acc>data[song][diff].acc){
+  if(!data[song][diff] || acc>data[song][diff].acc){
     data[song][diff]={acc,judge,level,time:Date.now()};
   }
 
@@ -170,29 +172,25 @@ function calculate() {
   render();
 }
 
-/* ================= 삭제 ================= */
+/* ---------- 삭제 ---------- */
 function deleteSong(song) {
   if(!confirm(`"${song}"의 모든 기록을 삭제할까요?`)) return;
-  const d=load();
-  delete d[song];
+  const d=load(); delete d[song];
   saveData(d); render();
 }
-
 function deleteDiff(song,diff) {
   if(!confirm(`${song} [${diff}] 기록을 삭제할까요?`)) return;
-  const d=load();
-  delete d[song][diff];
+  const d=load(); delete d[song][diff];
   if(Object.keys(d[song]).length===0) delete d[song];
   saveData(d); render();
 }
-
 function clearAll() {
   if(!confirm(`${currentUser}의 모든 기록을 삭제할까요?`)) return;
   localStorage.removeItem(key());
   render();
 }
 
-/* ================= 출력 ================= */
+/* ---------- 출력 ---------- */
 const diffOrder={APPEND:0,MASTER:1,EXPERT:2,HARD:3,NORMAL:4,EASY:5};
 
 function render() {
@@ -202,23 +200,35 @@ function render() {
   let list=[];
 
   for(let s in data){
-    let diffs=[],best=0,time=0,lvl=0;
+    let diffs=[], best=0, time=0;
+    let mainRank=999, mainAcc=0;
+
     for(let d in data[s]){
-      let r=data[s][d];
+      const r=data[s][d];
       diffs.push({diff:d,...r});
       best=Math.max(best,r.acc);
       time=Math.max(time,r.time);
-      lvl=Math.max(lvl,r.level);
-    }
-    diffs.sort((a,b)=>diffOrder[a.diff]-diffOrder[b.diff]);
-    list.push({song:s,best,time,lvl,diffs});
 
-    let o=document.createElement("option");
+      const rank=diffOrder[d];
+      if(rank<mainRank || (rank===mainRank && r.acc>mainAcc)){
+        mainRank=rank; mainAcc=r.acc;
+      }
+    }
+
+    diffs.sort((a,b)=>diffOrder[a.diff]-diffOrder[b.diff]);
+    list.push({song:s,best,time,diffs,mainRank,mainAcc});
+
+    const o=document.createElement("option");
     o.value=s; songs.appendChild(o);
   }
 
   const mode=sortMode.value;
-  list.sort((a,b)=>mode==="acc"?b.best-a.best:mode==="time"?b.time-a.time:b.lvl-a.lvl);
+  list.sort((a,b)=>{
+    if(mode==="acc") return b.best-a.best;
+    if(mode==="time") return b.time-a.time;
+    if(a.mainRank!==b.mainRank) return a.mainRank-b.mainRank;
+    return b.mainAcc-a.mainAcc;
+  });
 
   list.forEach(s=>{
     records.innerHTML+=`
@@ -228,16 +238,17 @@ function render() {
       </div>`;
     s.diffs.forEach(d=>{
       records.innerHTML+=`
-        <div class="record ${d.diff} ${d.judge}">
-          └ [${d.diff} ${d.level}] ${d.acc.toFixed(6)}%
-          ${d.judge!=="NONE"?`(${d.judge})`:""}
+        <div class="record">
+          └ <span class="${d.diff}">[${d.diff} ${d.level}]</span>
+          <span class="${d.judge}"> ${d.acc.toFixed(6)}%</span>
+          ${d.judge!=="NONE"?`<span class="${d.judge}"> (${d.judge})</span>`:""}
           <button class="delete" onclick="deleteDiff('${s.song}','${d.diff}')">✖</button>
         </div>`;
     });
   });
 }
 
-/* ================= DOM ================= */
+/* ---------- DOM ---------- */
 const userSelect=document.getElementById("userSelect");
 const newUser=document.getElementById("newUser");
 const songInput=document.getElementById("song");
