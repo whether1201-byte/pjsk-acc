@@ -148,9 +148,9 @@ MISS <input id="m" type="number" min="0"><br>
 
 <div class="controls">
   <select id="sortMode" onchange="render()">
+    <option value="level" selected>난이도 높은 순</option>
     <option value="acc">정확도 높은 순</option>
     <option value="time">최신 기록 순</option>
-    <option value="level">난이도 높은 순</option>
   </select>
 
   <select id="filterMode" onchange="render()">
@@ -267,11 +267,18 @@ function render(){
     for(let d in data[s]){
       diffs.push({song:s,diff:d,...data[s][d]});
     }
-    diffs.sort((a,b)=>{
-      if(diffOrder[a.diff]!==diffOrder[b.diff])
-        return diffOrder[a.diff]-diffOrder[b.diff];
-      return b.acc-a.acc;
-    });
+  diffs.sort((a,b)=>{
+    // 난이도(EXPERT > HARD 등)
+    if (diffOrder[a.diff] !== diffOrder[b.diff])
+      return diffOrder[a.diff] - diffOrder[b.diff];
+
+    // 같은 난이도면 레벨 (26 > 25)
+    if (a.level !== b.level)
+      return b.level - a.level;
+
+    // 난이도 + 레벨까지 같으면 정확도
+    return b.acc - a.acc;
+  });
     list.push({song:s,diffs});
       if (sort === "acc") {
     list.sort((a,b) =>
