@@ -13,9 +13,6 @@ body {
   padding:16px;
 }
 
-h2 { margin-bottom: 6px; }
-h3 { margin-top: 14px; }
-
 input, select, button {
   padding:8px;
   margin:4px 0;
@@ -25,48 +22,27 @@ input, select, button {
   border-radius:6px;
 }
 
-button {
-  cursor:pointer;
-  transition:0.2s;
-}
-button:hover {
-  background:#333;
-}
-
-hr {
-  border:none;
-  border-top:1px solid #333;
-  margin:14px 0;
-}
-
-/* ===== 카드 ===== */
 .song-card {
   background:#181818;
   border-radius:10px;
   padding:10px 12px;
   margin-top:14px;
-  box-shadow:0 0 6px rgba(0,0,0,0.4);
 }
 
 .song-title {
-  font-weight:bold;
-  font-size:16px;
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  font-weight:bold;
 }
 
-/* ===== 기록 ===== */
 .record {
   margin-top:6px;
   padding-left:10px;
-  font-size:14px;
   display:flex;
   align-items:center;
   gap:8px;
 }
 
-/* ===== 난이도 배지 ===== */
 .badge {
   padding:2px 6px;
   border-radius:6px;
@@ -81,104 +57,89 @@ hr {
 .MASTER { background:#6a1b9a; }
 .APPEND { background:#0277bd; }
 
-/* ===== 정확도 ===== */
 .acc { font-weight:bold; }
 .AP { color:#ffd700; }
 .FC { color:#9cff57; }
 
-/* ===== 버튼 ===== */
-.delete {
-  margin-left:auto;
+.icon-btn {
   background:none;
   border:none;
-  color:#ff5252;
-  font-size:14px;
+  color:#aaa;
+  cursor:pointer;
 }
 
-/* ===== 상단 컨트롤 ===== */
-.controls {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:10px;
+.delete {
+  color:#ff5252;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🎵 프로세카 정확도 기록기</h2>
+<h2>프로세카 정확도 기록기</h2>
 
-<h3>👤 유저</h3>
-<div class="controls">
-  <select id="userSelect" onchange="switchUser()"></select>
-  <input id="newUser" placeholder="새 유저">
-  <button onclick="addUser()">추가</button>
-</div>
+<select id="userSelect" onchange="switchUser()"></select>
+<input id="newUser" placeholder="새 유저">
+<button onclick="addUser()">추가</button>
+<button onclick="clearAll()">유저 기록 전체 삭제</button>
 
 <hr>
 
 <input id="song" placeholder="노래 이름" list="songList">
 <datalist id="songList"></datalist>
 
-<div class="controls">
-  <select id="diff">
-    <option>EASY</option>
-    <option>NORMAL</option>
-    <option>HARD</option>
-    <option>EXPERT</option>
-    <option>MASTER</option>
-    <option>APPEND</option>
-  </select>
+<select id="diff">
+  <option>APPEND</option>
+  <option>MASTER</option>
+  <option>EXPERT</option>
+  <option>HARD</option>
+  <option>NORMAL</option>
+  <option>EASY</option>
+</select>
 
-  <input id="level" type="number" min="1" max="40" placeholder="난이도">
-</div>
-
-<hr>
-
-PERFECT <input id="p" type="number" min="0"><br>
-GREAT <input id="g" type="number" min="0"><br>
-GOOD <input id="d" type="number" min="0"><br>
-BAD <input id="b" type="number" min="0"><br>
-MISS <input id="m" type="number" min="0"><br>
-
-<button onclick="calculate()">정확도 계산 & 저장</button>
+<input id="level" placeholder="기본 난이도">
+<input id="detail" placeholder="세부 난이도 (예: 27+/27.4)">
 
 <hr>
 
-<div class="controls">
-  <select id="sortMode" onchange="render()">
-    <option value="level" selected>난이도 높은 순</option>
-    <option value="acc">정확도 높은 순</option>
-    <option value="time">최신 기록 순</option>
-  </select>
+PERFECT <input id="p" type="number"><br>
+GREAT <input id="g" type="number"><br>
+GOOD <input id="d" type="number"><br>
+BAD <input id="b" type="number"><br>
+MISS <input id="m" type="number"><br>
 
-  <select id="filterMode" onchange="render()">
-    <option value="all">전체</option>
-    <option value="FC">FC만</option>
-    <option value="AP">AP만</option>
-  </select>
+<button onclick="calculate()">저장</button>
 
-  <button onclick="clearAll()">기록 초기화</button>
-</div>
+<hr>
 
-<div id="result"></div>
+<select id="filterMode" onchange="render()">
+  <option value="all">전체 보기</option>
+  <option value="FC">FC만 보기</option>
+  <option value="AP">AP만 보기</option>
+</select>
+
 <div id="records"></div>
 
 <script>
-/* ===== DB ===== */
 let db = JSON.parse(localStorage.getItem("pskDB") || "{}");
+let songOrder = JSON.parse(localStorage.getItem("songOrder") || "[]");
 let currentUser = localStorage.getItem("currentUser") || "default";
 
-function saveDB(){ localStorage.setItem("pskDB", JSON.stringify(db)); }
-function userData(){ if(!db[currentUser]) db[currentUser]={}; return db[currentUser]; }
+function saveDB(){
+  localStorage.setItem("pskDB", JSON.stringify(db));
+  localStorage.setItem("songOrder", JSON.stringify(songOrder));
+}
+function userData(){
+  if(!db[currentUser]) db[currentUser]={};
+  return db[currentUser];
+}
 
-/* ===== 유저 ===== */
+/* 유저 */
 function initUsers(){
   userSelect.innerHTML="";
   Object.keys(db).forEach(u=>{
     let o=document.createElement("option");
-    o.value=u; o.text=u;
+    o.value=o.text=u;
     if(u===currentUser) o.selected=true;
     userSelect.appendChild(o);
   });
@@ -190,7 +151,6 @@ function addUser(){
   currentUser=n;
   localStorage.setItem("currentUser",n);
   saveDB(); initUsers(); render();
-  newUser.value="";
 }
 function switchUser(){
   currentUser=userSelect.value;
@@ -198,140 +158,130 @@ function switchUser(){
   render();
 }
 
-/* ===== 정확도 ===== */
+/* 정확도 */
 function calcAccuracy(p,g,d,b,m){
   const N=p+g+d+b+m;
   if(!N) return 0;
-  const penalty = g + 2.5*d + 4*b + 8*m;
-  return Math.max(0,(1-penalty/N))*100;
+  return Math.max(0,(1-(g+2.5*d+4*b+8*m)/N))*100;
 }
 
-/* ===== 저장 ===== */
+/* 저장 */
 function calculate(){
   const song=songInput.value.trim();
-  if(!song) return alert("노래 이름 입력");
+  if(!song) return;
 
   const diff=diffSelect.value;
-  const level=+levelInput.value||0;
-  const p=+pInput.value, g=+gInput.value, d=+dInput.value, b=+bInput.value, m=+mInput.value;
+  const level=levelInput.value.trim();
+  const detail=detailInput.value.trim();
 
+  const p=+pInput.value, g=+gInput.value, d=+dInput.value, b=+bInput.value, m=+mInput.value;
   const acc=calcAccuracy(p,g,d,b,m);
 
   let judge="NONE";
   if(g===0 && d===0 && b===0 && m===0) judge="AP";
   else if(d===0 && b===0 && m===0) judge="FC";
 
-  result.innerHTML=`<div class="acc ${judge}">정확도: ${acc.toFixed(6)}% ${judge!=="NONE"?`(${judge})`:""}</div>`;
-
   const data=userData();
-  if(!data[song]) data[song]={};
-
-  if(!data[song][diff] || acc>data[song][diff].acc){
-    data[song][diff]={acc,judge,level,time:Date.now()};
+  if(!data[song]){
+    data[song]={};
+    songOrder.unshift(song);
   }
 
-  saveDB();
-  render();
-}
-
-/* ===== 삭제 ===== */
-function deleteSong(song){
-  if(!confirm(`"${song}" 전체 삭제?`)) return;
-  delete userData()[song];
+  data[song][diff]={acc,judge,level,detail};
   saveDB(); render();
 }
+
+/* 삭제 */
 function deleteDiff(song,diff){
-  if(!confirm(`${song} [${diff}] 삭제?`)) return;
+  if(!confirm(`${song} [${diff}] 기록 삭제?`)) return;
   delete userData()[song][diff];
-  if(Object.keys(userData()[song]).length===0) delete userData()[song];
+  if(Object.keys(userData()[song]).length===0){
+    deleteSong(song,false);
+  }
+  saveDB(); render();
+}
+function deleteSong(song,ask=true){
+  if(ask && !confirm(`"${song}" 전체 기록 삭제?`)) return;
+  delete userData()[song];
+  songOrder=songOrder.filter(s=>s!==song);
   saveDB(); render();
 }
 function clearAll(){
-  if(!confirm(`${currentUser} 기록 전부 삭제?`)) return;
+  if(!confirm(`${currentUser}의 모든 기록 삭제?`)) return;
   db[currentUser]={};
+  songOrder=[];
   saveDB(); render();
 }
 
-/* ===== 출력 ===== */
-const diffOrder={APPEND:0,MASTER:1,EXPERT:2,HARD:3,NORMAL:4,EASY:5};
+/* 순서 */
+function moveSong(song,dir){
+  const i=songOrder.indexOf(song);
+  const ni=i+dir;
+  if(ni<0||ni>=songOrder.length) return;
+  [songOrder[i],songOrder[ni]]=[songOrder[ni],songOrder[i]];
+  saveDB(); render();
+}
+
+/* 출력 */
+const diffOrder=["APPEND","MASTER","EXPERT","HARD","NORMAL","EASY"];
 
 function render(){
   records.innerHTML="";
   songList.innerHTML="";
   const data=userData();
-  const sort = sortMode.value; 
-  let list=[];
-
-  for(let s in data){
-    let diffs=[];
-    for(let d in data[s]){
-      diffs.push({song:s,diff:d,...data[s][d]});
-    }
-  diffs.sort((a,b)=>{
-    // 난이도(EXPERT > HARD 등)
-    if (diffOrder[a.diff] !== diffOrder[b.diff])
-      return diffOrder[a.diff] - diffOrder[b.diff];
-
-    // 같은 난이도면 레벨 (26 > 25)
-    if (a.level !== b.level)
-      return b.level - a.level;
-
-    // 난이도 + 레벨까지 같으면 정확도
-    return b.acc - a.acc;
-  });
-    list.push({song:s,diffs});
-      if (sort === "acc") {
-    list.sort((a,b) =>
-      Math.max(...b.diffs.map(d=>d.acc)) -
-      Math.max(...a.diffs.map(d=>d.acc))
-    );
-  }
-  else if (sort === "time") {
-    list.sort((a,b) =>
-      Math.max(...b.diffs.map(d=>d.time)) -
-      Math.max(...a.diffs.map(d=>d.time))
-    );
-  }
-  else if (sort === "level") {
-    list.sort((a,b) =>
-      Math.max(...b.diffs.map(d=>d.level)) -
-      Math.max(...a.diffs.map(d=>d.level))
-    );
-  }
-    let o=document.createElement("option");
-    o.value=s; songList.appendChild(o);
-  }
-
   const filter=filterMode.value;
 
-  list.forEach(s=>{
+  songOrder.forEach(song=>{
+    if(!data[song]) return;
+
+    let rows="";
+    diffOrder.forEach(d=>{
+      const r=data[song][d];
+      if(!r) return;
+
+      if(filter==="AP" && r.judge!=="AP") return;
+      if(filter==="FC" && !(r.judge==="FC" || r.judge==="AP")) return;
+
+      rows+=`
+        <div class="record">
+          <span class="badge ${d}">
+            ${d} ${r.level}${r.detail?` (${r.detail})`:""}
+          </span>
+          <span class="acc ${r.judge}">
+            ${r.acc.toFixed(6)}%${r.judge!=="NONE"?` (${r.judge})`:""}
+          </span>
+          <button class="icon-btn delete" onclick="deleteDiff('${song}','${d}')">✖</button>
+        </div>`;
+    });
+
+    if(!rows) return;
+
     records.innerHTML+=`
       <div class="song-card">
         <div class="song-title">
-          ${s.song}
-          <button class="delete" onclick="deleteSong('${s.song}')">🗑</button>
-        </div>`;
-    s.diffs.forEach(d=>{
-      if (filter === "AP" && d.judge !== "AP") return;
-      if (filter === "FC" && !(d.judge === "FC" || d.judge === "AP")) return;
-      records.innerHTML+=`
-        <div class="record">
-          <span class="badge ${d.diff}">${d.diff} ${d.level}</span>
-          <span class="acc ${d.judge}">${d.acc.toFixed(6)}%</span>
-          ${d.judge!=="NONE"?`(${d.judge})`:""}
-          <button class="delete" onclick="deleteDiff('${s.song}','${d.diff}')">✖</button>
-        </div>`;
-    });
-    records.innerHTML+=`</div>`;
+          ${song}
+          <span style="margin-left:auto">
+            <button class="icon-btn" onclick="moveSong('${song}',-1)">▲</button>
+            <button class="icon-btn" onclick="moveSong('${song}',1)">▼</button>
+            <button class="icon-btn delete" onclick="deleteSong('${song}')">🗑</button>
+          </span>
+        </div>
+        ${rows}
+      </div>`;
+
+    let o=document.createElement("option");
+    o.value=o.text=song;
+    songList.appendChild(o);
   });
 }
 
-/* ===== DOM ===== */
+/* DOM */
 const userSelect=document.getElementById("userSelect");
 const newUser=document.getElementById("newUser");
 const songInput=document.getElementById("song");
 const diffSelect=document.getElementById("diff");
 const levelInput=document.getElementById("level");
+const detailInput=document.getElementById("detail");
 const pInput=document.getElementById("p");
 const gInput=document.getElementById("g");
 const dInput=document.getElementById("d");
@@ -339,9 +289,7 @@ const bInput=document.getElementById("b");
 const mInput=document.getElementById("m");
 const records=document.getElementById("records");
 const songList=document.getElementById("songList");
-const sortMode=document.getElementById("sortMode");
 const filterMode=document.getElementById("filterMode");
-const result=document.getElementById("result");
 
 initUsers();
 render();
@@ -349,3 +297,4 @@ render();
 
 </body>
 </html>
+
